@@ -338,7 +338,7 @@ export default class Slider extends PureComponent {
   _handlePanResponderGrant = (/*e: Object, gestureState: Object*/) => {
     this._previousLeft = this._getThumbLeft(this._getCurrentValue());
     this._fireChangeEvent('onSlidingStart');
-    this.animateThumbSize(this.props.thumbSizeOnTouch);
+    if (!this.props.disabled) this.animateThumbSize(this.props.thumbSizeOnTouch);
   };
 
   _handlePanResponderMove = (e: Object, gestureState: Object) => {

@@ -42,12 +42,10 @@ var DEFAULT_ANIMATION_CONFIGS = {
     duration : 150,
     easing   : Easing.inOut(Easing.ease),
     delay    : 0
-  },
-  // decay : { // This has a serious bug
-  //   velocity     : 1,
-  //   deceleration : 0.997
-  // }
+  }
 };
+
+const INITIAL_THUMB_SIZE_MULTIPLIER = 1;
 
 export default class Slider extends PureComponent {
   static propTypes = {
@@ -99,6 +97,8 @@ export default class Slider extends PureComponent {
      * The color used for the thumb.
      */
     thumbTintColor: PropTypes.string,
+
+    thumbSizeOnTouch: PropTypes.number,
 
     /**
      * The size of the touch area that allows moving the thumb.
@@ -179,7 +179,8 @@ export default class Slider extends PureComponent {
     thumbTintColor: '#343434',
     thumbTouchSize: {width: 40, height: 40},
     debugTouchArea: false,
-    animationType: 'timing'
+    animationType: 'timing',
+    thumbSizeOnTouch: 1
   };
 
   state = {
@@ -188,6 +189,7 @@ export default class Slider extends PureComponent {
     thumbSize: {width: 0, height: 0},
     allMeasured: false,
     value: new Animated.Value(this.props.value),
+    currentThumbSizeMultiplier: new Animated.Value(INITIAL_THUMB_SIZE_MULTIPLIER)
   };
 
   componentWillMount() {
@@ -230,12 +232,11 @@ export default class Slider extends PureComponent {
       debugTouchArea,
       ...other
     } = this.props;
-    var {value, containerSize, trackSize, thumbSize, allMeasured} = this.state;
+    var {value, containerSize, trackSize, thumbSize, allMeasured, currentThumbSizeMultiplier} = this.state;
     var mainStyles = styles || defaultStyles;
     var thumbLeft = value.interpolate({
       inputRange: [minimumValue, maximumValue],
-      outputRange: [0, containerSize.width - thumbSize.width],
-      //extrapolate: 'clamp',
+      outputRange: [0, containerSize.width - thumbSize.width]
     });
     var valueVisibleStyle = {};
     if (!allMeasured) {
@@ -244,7 +245,9 @@ export default class Slider extends PureComponent {
 
     var minimumTrackStyle = {
       position: 'absolute',
-      width: Animated.add(thumbLeft, thumbSize.width / 2),
+      transform: [
+        { translateX: Animated.add(thumbLeft, thumbSize.width / 2) }
+      ],
       backgroundColor: minimumTrackTintColor,
       ...valueVisibleStyle
     };
@@ -259,7 +262,16 @@ export default class Slider extends PureComponent {
           onLayout={this._measureTrack} />
         <Animated.View
           renderToHardwareTextureAndroid={true}
-          style={[mainStyles.track, trackStyle, minimumTrackStyle]} />
+          style={[
+            mainStyles.track,
+            trackStyle,
+            minimumTrackStyle,
+            {
+              marginHorizontal: -containerSize.width,
+              width: containerSize.width
+            }
+          ]}
+        />
         <Animated.View
           onLayout={this._measureThumb}
           renderToHardwareTextureAndroid={true}
@@ -269,7 +281,7 @@ export default class Slider extends PureComponent {
             {
               transform: [
                 { translateX: thumbLeft },
-                { translateY: 0 }
+                { scale: currentThumbSizeMultiplier }
               ],
               ...valueVisibleStyle
             }
@@ -286,6 +298,17 @@ export default class Slider extends PureComponent {
       </View>
     );
   };
+
+  animateThumbSize = (toValue) => {
+    Animated.timing(
+      this.state.currentThumbSizeMultiplier,
+      {
+        toValue,
+        duration: 175,
+        useNativeDriver: true
+      }
+    ).start();
+  }
 
   _getPropsForComponentUpdate(props) {
     var {
@@ -315,6 +338,7 @@ export default class Slider extends PureComponent {
   _handlePanResponderGrant = (/*e: Object, gestureState: Object*/) => {
     this._previousLeft = this._getThumbLeft(this._getCurrentValue());
     this._fireChangeEvent('onSlidingStart');
+    this.animateThumbSize(this.props.thumbSizeOnTouch);
   };
 
   _handlePanResponderMove = (e: Object, gestureState: Object) => {
@@ -335,9 +359,9 @@ export default class Slider extends PureComponent {
     if (this.props.disabled) {
       return;
     }
-
     this._setCurrentValue(this._getValue(gestureState));
     this._fireChangeEvent('onSlidingComplete');
+    this.animateThumbSize(INITIAL_THUMB_SIZE_MULTIPLIER);
   };
 
   _measureContainer = (x: Object) => {

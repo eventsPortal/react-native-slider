@@ -255,7 +255,19 @@ export default class Slider extends PureComponent {
     var touchOverflowStyle = this._getTouchOverflowStyle();
 
     return (
-      <View {...other} style={[mainStyles.container, style]} onLayout={this._measureContainer}>
+      <View
+        {...other}
+        style={
+          [
+            mainStyles.container,
+            style,
+            {
+              overflow: 'hidden'
+            }
+          ]
+        }
+      onLayout={this._measureContainer}
+      >
         <View
           style={[{backgroundColor: maximumTrackTintColor,}, mainStyles.track, trackStyle]}
           renderToHardwareTextureAndroid={true}
